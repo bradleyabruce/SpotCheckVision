@@ -21,7 +21,7 @@ while not isConnected:
         sys.exit()
 
 # Get information to send to database
-device = Device.Device("1", DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(), DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), "1", "1", datetime.datetime.now())
+device = Device.Device("2", DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(), DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), "1", "1", datetime.datetime.now())
 
 is_updated = APIConnect.update_device(device)
 if is_updated:
