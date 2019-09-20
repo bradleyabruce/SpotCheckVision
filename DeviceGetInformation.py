@@ -1,11 +1,15 @@
 import socket
-from requests import get
+import urllib.request
 import uuid
 
 
 def get_host_name():
-    host_name = socket.gethostname()
-    return host_name
+    try:
+        host_name = socket.gethostname()
+        return host_name
+    except Exception:
+        print("Unable to get Host Name")
+        return "Error"
 
 
 def get_local_ip():
@@ -13,23 +17,28 @@ def get_local_ip():
         host_name = socket.gethostname()
         local_ip = socket.gethostbyname(host_name)
         return local_ip
-    except:
+    except Exception:
         print("Unable to get local IP")
-        return None
+        return "Error"
 
 
 def get_external_ip():
     try:
-        external_ip = get('https://api.ipify.org').text
+        external_ip = urllib.request.urlopen('https://ident.me').read().decode('utf8')
         return external_ip
-    except:
+    except Exception:
         print("Unable to get external IP")
+        return "Error"
 
 
 def get_mac_address():
-    mac_address = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff)
+    try:
+        mac_address = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff)
                            for ele in range(0, 8 * 6, 8)][::-1])
-    return mac_address
+        return mac_address
+    except Exception:
+        print("Unable to get mac address")
+        return "Error"
 
 
 def is_connected(host="8.8.8.8", port=53, timeout=3):
