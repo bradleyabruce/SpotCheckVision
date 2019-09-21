@@ -3,6 +3,17 @@ import urllib.request
 import uuid
 
 
+def get_device_id():
+    f=open("DeviceID.txt", "r")
+    if f.mode == "r":
+        contents = f.read()
+        return contents
+
+def write_device_id(device_id):
+    f=open("DeviceID.txt", "a+")
+    f.write(device_id)
+    
+
 def get_host_name():
     try:
         host_name = socket.gethostname()
@@ -15,7 +26,7 @@ def get_host_name():
 def get_local_ip():
     try:
         host_name = socket.gethostname()
-        local_ip = socket.gethostbyname(host_name)
+        local_ip = socket.gethostbyname(host_name + ".local")
         return local_ip
     except Exception:
         print("Unable to get local IP")
