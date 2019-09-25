@@ -24,12 +24,13 @@ while not isConnected:
 # If it has not been set, then run the create script
 device_id = DeviceGetInformation.get_device_id()
 if device_id == "":
-    print("Creating Database Entry")
+    print("Creating Database Entry.")
     new_device = Device.Device(None, DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(), DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), "1", "1", datetime.datetime.now())
     new_device_id = APIConnect.create_device(new_device)
     
-    #write new device id to text file for next time
-    if new_device_id != "":
+    # Write new device id to text file for next time
+    print
+    if new_device_id is not None:
         DeviceGetInformation.write_device_id(new_device_id)
         print("Creation Complete.")
     

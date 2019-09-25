@@ -4,14 +4,22 @@ import uuid
 
 
 def get_device_id():
-    f=open("DeviceID.txt", "r")
-    if f.mode == "r":
-        contents = f.read()
-        return contents
+    try:
+        f = open("DeviceID.txt", "r")
+        if f.mode == "r":
+            contents = f.read()
+            return contents
+    except Exception:
+        return ""
+
 
 def write_device_id(device_id):
-    f=open("DeviceID.txt", "a+")
-    f.write(device_id)
+    try:
+        f = open("DeviceID.txt", "a+")
+        f.write(device_id)
+        return True
+    except Exception:
+        return False
     
 
 def get_host_name():
@@ -63,5 +71,5 @@ def is_connected(host="8.8.8.8", port=53, timeout=3):
         socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
         # print("Connected")
         return True
-    except:
+    except Exception:
         return False
