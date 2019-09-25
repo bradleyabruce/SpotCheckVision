@@ -20,10 +20,12 @@ while not isConnected:
         print("Failed to Connect")
         sys.exit()
 
-# Check to see if DeviceID has been set
-# If it has not been set, then run the create script
-device_id = DeviceGetInformation.get_device_id()
-if device_id == "":
+# Check to see if Device is already in the database
+device_list = APIConnect.get_all_devices()
+device_id = DeviceGetInformation.get_device_id(device_list)
+
+# if it does not exist, then create an entry
+if device_id is None:
     print("Creating Database Entry.")
     new_device = Device.Device(None, DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(), DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), "1", "1", datetime.datetime.now())
     new_device_id = APIConnect.create_device(new_device)
@@ -37,7 +39,7 @@ if device_id == "":
     else:
         print("Could Not Create Entry.")
     
-# If device_id exists, then simply update the existing entry
+# If device exists, then simply update the existing entry
 else:   
     device = Device.Device(device_id, DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(), DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), "1", "1", datetime.datetime.now())
 

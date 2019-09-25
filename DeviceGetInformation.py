@@ -3,24 +3,14 @@ import urllib.request
 import uuid
 
 
-def get_device_id():
-    try:
-        f = open("DeviceID.txt", "r")
-        if f.mode == "r":
-            contents = f.read()
-            return contents
-    except Exception:
-        return ""
+def get_device_id(devices=[]):
+    current_mac_address = get_mac_address()
+    device_id = None
+    for device in devices:
+        if device['macAddress'] == current_mac_address:
+            device_id = device['deviceID']
+            return device_id
 
-
-def write_device_id(device_id):
-    try:
-        f = open("DeviceID.txt", "a+")
-        f.write(device_id)
-        return True
-    except Exception:
-        return False
-    
 
 def get_host_name():
     try:
@@ -53,7 +43,7 @@ def get_external_ip():
 def get_mac_address():
     try:
         mac_address = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff)
-                           for ele in range(0, 8 * 6, 8)][::-1])
+                                for ele in range(0, 8 * 6, 8)][::-1])
         return mac_address
     except Exception:
         print("Unable to get mac address")
