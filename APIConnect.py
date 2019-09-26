@@ -7,7 +7,6 @@ address = "http://localhost:8080/"
 
 
 def update_device(device):
-
     try:
         url = address + 'device/updateDevice'
         body = {'deviceId': device.DeviceId, 'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress, 'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lotId': device.LotId, 'floorNumber': device.FloorNumber, 'lastUpdateDate': str(device.LastUpdateDate)}
@@ -15,8 +14,9 @@ def update_device(device):
 
         r = requests.post(url=url, headers=headers, json=body)
         data = r.text
-        # print(data)
-        if data == 'updateDevice - Success':
+        status_code = r.status_code
+
+        if status_code == 200:
             return True
         else:
             print(data)
@@ -31,14 +31,14 @@ def update_device(device):
 def create_device(device):
     try:
         url = address + 'device/createDevice'
-        body = {'deviceId': '0', 'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress, 'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lotId': device.LotId, 'floorNumber': device.FloorNumber, 'lastUpdateDate': str(device.LastUpdateDate)}
+        body = {'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress, 'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lotId': device.LotId, 'floorNumber': device.FloorNumber, 'lastUpdateDate': str(device.LastUpdateDate)}
         headers = {'Content-type': 'application/json'}
 
         r = requests.post(url=url, headers=headers, json=body)
         data = r.text
         status_code = r.status_code
 
-        if status_code == '200':
+        if status_code == 200:
             return data
         else:
             return None
@@ -54,8 +54,14 @@ def get_all_devices():
         headers = {'Content-type': 'application/json'}
 
         r = requests.get(url=url, headers=headers)
-        device_list = json.loads(r.text)
-        return device_list
+        status_code = r.status_code
+
+        if status_code == 200:
+            device_list = json.loads(r.text)
+            return device_list
+        else:
+            print(r.text)
+            return None
 
     except Exception as err:
         print(err)

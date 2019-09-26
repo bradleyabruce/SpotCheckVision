@@ -4,12 +4,20 @@ import uuid
 
 
 def get_device_id(devices=[]):
-    current_mac_address = get_mac_address()
-    device_id = None
-    for device in devices:
-        if device['macAddress'] == current_mac_address:
-            device_id = device['deviceID']
-            return device_id
+    try:
+        current_mac_address = get_mac_address()
+        device_id = None
+        for device in devices:
+            if device['macAddress'] == current_mac_address:
+                device_id = device['deviceID']
+                return device_id
+
+        return None
+
+    except Exception:
+        # most likely to catch if list of devices is empty
+        return None
+
 
 
 def get_host_name():
