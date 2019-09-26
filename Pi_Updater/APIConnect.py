@@ -12,7 +12,7 @@ def update_device(device):
         body = {'deviceId': device.DeviceId, 'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress, 'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lotId': device.LotId, 'floorNumber': device.FloorNumber, 'lastUpdateDate': str(device.LastUpdateDate)}
         headers = {'Content-type': 'application/json'}
 
-        r = requests.post(url=url, headers=headers, json=body)
+        r = requests.post(url=url, headers=headers, data=json.dumps(body))
         data = r.text
         status_code = r.status_code
 
@@ -34,7 +34,7 @@ def create_device(device):
         body = {'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress, 'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lotId': device.LotId, 'floorNumber': device.FloorNumber, 'lastUpdateDate': str(device.LastUpdateDate)}
         headers = {'Content-type': 'application/json'}
 
-        r = requests.post(url=url, headers=headers, json=body)
+        r = requests.post(url=url, headers=headers, data=json.dumps(body))
         data = r.text
         status_code = r.status_code
 
