@@ -1,5 +1,5 @@
 import socket
-import urllib.request
+import urllib
 import uuid
 
 
@@ -41,7 +41,7 @@ def get_local_ip():
 
 def get_external_ip():
     try:
-        external_ip = urllib.request.urlopen('https://ident.me').read().decode('utf8')
+        external_ip = urllib.urlopen('https://ident.me').read().decode('utf8')
         return external_ip
     except Exception:
         print("Unable to get external IP")

@@ -2,8 +2,8 @@ import requests
 import Device
 import json
 
-address = "http://localhost:8080/"
-# address = "http://173.91.255.135:8080/SpotCheckServer-2.1.8.RELEASE/"
+# address = "http://localhost:8080/"
+address = "http://173.91.255.135:8080/SpotCheckServer-2.1.8.RELEASE/"
 
 
 def update_device(device):
