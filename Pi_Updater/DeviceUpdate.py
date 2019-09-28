@@ -5,6 +5,8 @@ import APIConnect
 import DeviceGetInformation
 import Device
 
+from pip._vendor.distlib.compat import raw_input
+
 # Check to see if device is connected to network
 isConnected = DeviceGetInformation.is_connected()
 connectionTryCount = 0
@@ -26,7 +28,10 @@ device_id = DeviceGetInformation.get_device_id(device_list)
 # if device does not exist in database, then run method to create new entry
 if device_id is None:
     print("Creating Database Entry...")
-    new_device = Device.Device(None, DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(), DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), "1", "1", datetime.datetime.now())
+    # first, get company id from user input
+    company_id = raw_input("Enter Company ID: ")
+
+    new_device = Device.Device(None, DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(), DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), "1", "1", datetime.datetime.now(), company_id)
     new_device_id = APIConnect.create_device(new_device)
 
     # Check to see if newly inserted DeviceId is valid
@@ -39,7 +44,7 @@ if device_id is None:
 # if device exists in database, update the database
 else:
     print("Updating Existing Database Entry...")
-    device = Device.Device(device_id, DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(), DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), "1", "1", datetime.datetime.now())
+    device = Device.Device(device_id, DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(), DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), "1", "1", datetime.datetime.now(), "0")
 
     is_updated = APIConnect.update_device(device)
     if is_updated:

@@ -31,7 +31,7 @@ def update_device(device):
 def create_device(device):
     try:
         url = address + 'device/createDevice'
-        body = {'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress, 'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lotId': device.LotId, 'floorNumber': device.FloorNumber, 'lastUpdateDate': str(device.LastUpdateDate)}
+        body = {'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress, 'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lotId': device.LotId, 'floorNumber': device.FloorNumber, 'lastUpdateDate': str(device.LastUpdateDate), 'companyId': device.CompanyID}
         headers = {'Content-type': 'application/json'}
 
         r = requests.post(url=url, headers=headers, data=json.dumps(body))
