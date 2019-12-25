@@ -32,7 +32,9 @@ import ParkingSpot
 import ApiConnect
 import DeviceUpdate
 
+
 # **************** Run scripts to Update Raspberry Pi ******************* #
+
 
 device_id = DeviceUpdate.initialize_raspberry_pi(1)
 if device_id is not None:
@@ -41,7 +43,9 @@ else:
     print("Raspberry Pi could not be initialized.")
     sys.exit()
 
+
 # *********** Initialize TensorFlow model that will be deployed ************ #
+
 
 # Set up camera constants
 IM_WIDTH = 1280
@@ -79,18 +83,31 @@ categories = label_map_util.convert_label_map_to_categories(label_map, max_num_c
                                                             use_display_name=True)
 category_index = label_map_util.create_category_index(categories)
 
+# We need to limit the scope of the category_index to detect less objects
+required_index_list = [1, 3, 4, 8]
+unused_index_list = []
+
+for index in category_index:
+    if index not in required_index_list:
+        unused_index_list.append(index)
+
+for index in unused_index_list:
+    category_index.pop(index, None)
+
 # Load the TensorFlow model into memory.
 detection_graph = tf.Graph()
 with detection_graph.as_default():
     od_graph_def = tf.GraphDef()
-    with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
+    with tf.io.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
         serialized_graph = fid.read()
         od_graph_def.ParseFromString(serialized_graph)
         tf.import_graph_def(od_graph_def, name='')
 
     sess = tf.Session(graph=detection_graph)
 
+
 # ************** Define input and output for the object detection classifier *************** #
+
 
 # Input tensor is the image
 image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
@@ -106,7 +123,9 @@ detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')
 # Number of objects detected
 num_detections = detection_graph.get_tensor_by_name('num_detections:0')
 
+
 # *********************** Initialize other parameters **************************** #
+
 
 # Initialize frame rate calculation
 frame_rate_calc = 1
@@ -123,35 +142,14 @@ elif len(parking_spots) < 1:
     print("No spots available for this device.")
     sys.exit()
 else:
-    print(str(len(parking_spots)) + " Parking spots linked to device.")
+    print(str(len(parking_spots)) + " Parking spot(s) linked to current device.")
 
-# TODO read from database to get box information
-# Define inside box coordinates (top left and bottom right)
-# TL_inside = (40, 450)
-# BR_inside = (303, 633)
 
-# Define outside box coordinates (top left and bottom right)
-# TL_outside = (int(IM_WIDTH * 0.46), int(IM_HEIGHT * 0.25))
-# BR_outside = (int(IM_WIDTH * 0.8), int(IM_HEIGHT * .85))
-
-# Initialize control variables used for pet detector
-detected_inside = False
-detected_outside = False
-
-inside_counter = 0
-outside_counter = 0
-
-pause = 0
-pause_counter = 0
-
-# **************** Spot Check Vision Function ******************* #
+# ********************* Spot Check Vision Function ************************ #
 
 
 def spot_check_vision(frame):
     # Use globals for the control variables so they retain their value after function exits
-    # global detected_inside, detected_outside
-    global inside_counter, outside_counter
-    global pause, pause_counter
     global parking_spots
 
     frame_expanded = np.expand_dims(frame, axis=0)
@@ -177,96 +175,35 @@ def spot_check_vision(frame):
         top_left = (p.TopLeftXCoordinate, p.TopLeftYCoordinate)
         bottom_right = (p.BottomRightXCoordinate, p.BottomRightYCoordinate)
         cv2.rectangle(frame, top_left, bottom_right, (0, 0, 255), 2)
-        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), top_left, font, 1, (0, 0, 255), 1, cv2.LINE_AA)
-
-
-
-    #cv2.rectangle(frame, TL_inside, BR_inside, (0, 0, 255), 2)
-    #cv2.putText(frame, "SpotID: 1", (TL_inside[0] + 10, TL_inside[1] - 10), font, 1, (0, 0, 255), 1, cv2.LINE_AA)
+        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0] + 10, top_left[1] - 10), font, 1, (0, 0, 255), 1, cv2.LINE_AA)
 
     # classes array is an array of all detected objects and what they have been classified as
     # loop through every detected object and check if it is a vehicle (car (3), motorcycle (4), or truck (8))
     # the boxes array holds coordinates of detected objects that we can use
     # boxes[0][objectIndex] variable holds coordinates of detected objects as (ymin, xmin, ymax, xmax)
     detected_object_index = 0
-    for detectedObject in classes[0]:
-        if (detectedObject == 3) or (detectedObject == 4) or (detectedObject == 8):
+    for detected_object in classes[0]:
+        if detected_object in required_index_list:
             # Place a dot in objects center
             x = int(((boxes[0][detected_object_index][1] + boxes[0][detected_object_index][3]) / 2) * IM_WIDTH)
             y = int(((boxes[0][detected_object_index][0] + boxes[0][detected_object_index][2]) / 2) * IM_HEIGHT)
             cv2.circle(frame, (x, y), 5, (75, 13, 180), -1)
 
-            # Check if vehicle is inside one of our spots
-            # print(classes[0][detectedObjectIndex])
+            # Check to see if our detected object is withing a parking spot
+            for spot in parking_spots:
+                if (spot.TopLeftXCoordinate < x) and (spot.BottomRightXCoordinate > x) and (spot.TopLeftYCoordinate > y) and (spot.BottomRightYCoordinate < y):
+                    spot.IsOpen = True
+                    print("Spot " + str(spot.ParkingSpotID) + " is taken!")
+                    break
 
         detected_object_index += 1
-
-    if (((int(classes[0][0]) == 3) or (int(classes[0][0] == 4) or (int(classes[0][0]) == 8))) and (pause == 0)):
-        x = int(((boxes[0][0][1] + boxes[0][0][3]) / 2) * IM_WIDTH)
-        y = int(((boxes[0][0][0] + boxes[0][0][2]) / 2) * IM_HEIGHT)
-
-        # If object is in inside box, increment inside counter variable
-        #if ((x > TL_inside[0]) and (x < BR_inside[0]) and (y > TL_inside[1]) and (y < BR_inside[1])):
-            #inside_counter = inside_counter + 1
-
-        # If object is in outside box, increment outside counter variable
-        #if ((x > TL_outside[0]) and (x < BR_outside[0]) and (y > TL_outside[1]) and (y < BR_outside[1])):
-            #outside_counter = outside_counter + 1
-
-    # If pet has been detected inside for more than 10 frames, set detected_inside flag
-    # and send a text to the phone.
-    if inside_counter > 10:
-        detected_inside = True
-        print("Spot 2 Taken")
-        inside_counter = 0
-        outside_counter = 0
-        # Pause pet detection by setting "pause" flag
-        pause = 1
-
-    # If pet has been detected outside for more than 10 frames, set detected_outside flag
-    # and send a text to the phone.
-    if outside_counter > 10:
-        detected_outside = True
-        print("Spot 1 Taken!")
-        inside_counter = 0
-        outside_counter = 0
-        # Pause pet detection by setting "pause" flag
-        pause = 1
-
-    # If pause flag is set, draw message on screen.
-    if pause == 1:
-        if detected_inside == True:
-            cv2.putText(frame, 'Spot 1 is taken!', (int(IM_WIDTH * .1), int(IM_HEIGHT * .5)), font, 3, (0, 0, 0), 7,
-                        cv2.LINE_AA)
-            cv2.putText(frame, 'Spot 1 is taken!', (int(IM_WIDTH * .1), int(IM_HEIGHT * .5)), font, 3, (95, 176, 23), 5,
-                        cv2.LINE_AA)
-
-        if detected_outside == True:
-            cv2.putText(frame, 'Spot 2 is taken!', (int(IM_WIDTH * .1), int(IM_HEIGHT * .5)), font, 3, (0, 0, 0), 7,
-                        cv2.LINE_AA)
-            cv2.putText(frame, 'Spot 2 is taken!', (int(IM_WIDTH * .1), int(IM_HEIGHT * .5)), font, 3, (95, 176, 23), 5,
-                        cv2.LINE_AA)
-
-        # Increment pause counter until it reaches 30 (for a framerate of 1.5 FPS, this is about 20 seconds),
-        # then unpause the application (set pause flag to 0).
-        pause_counter = pause_counter + 1
-        if pause_counter > 15:
-            pause = 0
-            pause_counter = 0
-            detected_inside = False
-            detected_outside = False
-
-    # Draw counter info
-    cv2.putText(frame, 'Detection counter: ' + str(max(inside_counter, outside_counter)), (10, 100), font, 0.5,
-                (255, 255, 0), 1, cv2.LINE_AA)
-    cv2.putText(frame, 'Pause counter: ' + str(pause_counter), (10, 150), font, 0.5, (255, 255, 0), 1, cv2.LINE_AA)
 
     return frame
 
 
-#### Initialize camera and perform object detection ####
+# ******************* Initialize camera and perform object detection ********************* #
 
-### Picamera ###
+
 if camera_type == 'picamera':
     # Initialize Picamera and grab reference to the raw capture
     camera = PiCamera()
