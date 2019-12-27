@@ -32,7 +32,6 @@ import ParkingSpot
 import ApiConnect
 import DeviceUpdate
 
-
 # **************** Run scripts to Update Raspberry Pi ******************* #
 
 
@@ -42,7 +41,6 @@ if device_id is not None:
 else:
     print("Raspberry Pi could not be initialized.")
     sys.exit()
-
 
 # *********** Initialize TensorFlow model that will be deployed ************ #
 
@@ -84,7 +82,7 @@ categories = label_map_util.convert_label_map_to_categories(label_map, max_num_c
 category_index = label_map_util.create_category_index(categories)
 
 # We need to limit the scope of the category_index to detect less objects
-required_index_list = [1, 3, 4, 8]
+required_index_list = [3, 4, 8]
 unused_index_list = []
 
 for index in category_index:
@@ -105,7 +103,6 @@ with detection_graph.as_default():
 
     sess = tf.Session(graph=detection_graph)
 
-
 # ************** Define input and output for the object detection classifier *************** #
 
 
@@ -122,7 +119,6 @@ detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')
 
 # Number of objects detected
 num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-
 
 # *********************** Initialize other parameters **************************** #
 
@@ -148,11 +144,11 @@ else:
 # ********************* Spot Check Vision Function ************************ #
 
 
-def spot_check_vision(frame):
+def spot_check_vision(current_frame):
     # Use globals for the control variables so they retain their value after function exits
-    global parking_spots
+    # global parking_spots
 
-    frame_expanded = np.expand_dims(frame, axis=0)
+    frame_expanded = np.expand_dims(current_frame, axis=0)
 
     # Perform the actual detection by running the model with the image as input
     (boxes, scores, classes, num) = sess.run(
@@ -160,45 +156,59 @@ def spot_check_vision(frame):
         feed_dict={image_tensor: frame_expanded})
 
     # Draw the results of the detection
-    vis_util.visualize_boxes_and_labels_on_image_array(
-        frame,
-        np.squeeze(boxes),
-        np.squeeze(classes).astype(np.int32),
-        np.squeeze(scores),
-        category_index,
-        use_normalized_coordinates=True,
-        line_thickness=2,
-        min_score_thresh=0.25)
+    vis_util.visualize_boxes_and_labels_on_image_array(current_frame, np.squeeze(boxes),
+                                                       np.squeeze(classes).astype(np.int32), np.squeeze(scores),
+                                                       category_index, use_normalized_coordinates=True,
+                                                       line_thickness=2, min_score_thresh=0.45)
 
-    # Draw boxes defining parking spots
+    # Draw parking spots labels
     for p in parking_spots:
         top_left = (p.TopLeftXCoordinate, p.TopLeftYCoordinate)
-        bottom_right = (p.BottomRightXCoordinate, p.BottomRightYCoordinate)
-        cv2.rectangle(frame, top_left, bottom_right, (0, 0, 255), 2)
-        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0] + 10, top_left[1] - 10), font, 1, (0, 0, 255), 1, cv2.LINE_AA)
+        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0] + 10, top_left[1] - 10), font, 1, (0, 0, 0),
+                    2, cv2.LINE_AA)
+        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0] + 10, top_left[1] - 10), font, 1,
+                    (255, 255, 255), 1, cv2.LINE_AA)
 
     # classes array is an array of all detected objects and what they have been classified as
-    # loop through every detected object and check if it is a vehicle (car (3), motorcycle (4), or truck (8))
     # the boxes array holds coordinates of detected objects that we can use
     # boxes[0][objectIndex] variable holds coordinates of detected objects as (ymin, xmin, ymax, xmax)
+    object_coordinates = []
+
     detected_object_index = 0
     for detected_object in classes[0]:
         if detected_object in required_index_list:
-            # Place a dot in objects center
+            # Get center of object
             x = int(((boxes[0][detected_object_index][1] + boxes[0][detected_object_index][3]) / 2) * IM_WIDTH)
             y = int(((boxes[0][detected_object_index][0] + boxes[0][detected_object_index][2]) / 2) * IM_HEIGHT)
-            cv2.circle(frame, (x, y), 5, (75, 13, 180), -1)
-
-            # Check to see if our detected object is withing a parking spot
-            for spot in parking_spots:
-                if (spot.TopLeftXCoordinate < x) and (spot.BottomRightXCoordinate > x) and (spot.TopLeftYCoordinate > y) and (spot.BottomRightYCoordinate < y):
-                    spot.IsOpen = True
-                    print("Spot " + str(spot.ParkingSpotID) + " is taken!")
-                    break
-
+            object_coordinates.append((x, y))
+            cv2.circle(current_frame, (x, y), 7, (75, 13, 180), -1)
         detected_object_index += 1
 
-    return frame
+    for spot in parking_spots:
+        spot_changed = False
+        for coord in object_coordinates:
+            if (spot.TopLeftXCoordinate < coord[0]) and (spot.BottomRightXCoordinate > coord[0]) and (
+                    spot.TopLeftYCoordinate < coord[1]) and (spot.BottomRightYCoordinate > coord[1]):
+                spot.IsOpen = False
+                spot_changed = True
+                break
+        if spot_changed is False:
+            spot.IsOpen = True
+        top_left = (spot.TopLeftXCoordinate, spot.TopLeftYCoordinate)
+        bottom_right = (spot.BottomRightXCoordinate, spot.BottomRightYCoordinate)
+        if spot.OccupiedCounter > 10:
+            spot.IsOpen = False
+        # If a spot is open, it can have movement
+        if spot.IsOpen is True and spot.HasMovement is False:
+            cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 0), 2)
+        if spot.IsOpen is True and spot.HasMovement is True:
+            cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 255), 2)
+        if spot.IsOpen is False:
+            cv2.rectangle(current_frame, top_left, bottom_right, (0, 0, 255), 2)
+
+            #
+
+    return current_frame
 
 
 # ******************* Initialize camera and perform object detection ********************* #
