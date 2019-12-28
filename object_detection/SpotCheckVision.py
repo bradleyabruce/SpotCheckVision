@@ -16,7 +16,6 @@
 #
 # The framework is based off the Object_detection_picamera.py script located here:
 # https://github.com/EdjeElectronics/TensorFlow-Object-Detection-on-the-Raspberry-Pi/blob/master/Object_detection_picamera.py
-#
 # ***********************************************************************
 
 import os
@@ -25,12 +24,12 @@ import numpy as np
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 import tensorflow as tf
-import argparse
 import sys
 
 import ParkingSpot
 import ApiConnect
 import DeviceUpdate
+
 
 # **************** Run scripts to Update Raspberry Pi ******************* #
 
@@ -41,6 +40,7 @@ if device_id is not None:
 else:
     print("Raspberry Pi could not be initialized.")
     sys.exit()
+
 
 # *********** Initialize TensorFlow model that will be deployed ************ #
 
@@ -103,6 +103,7 @@ with detection_graph.as_default():
 
     sess = tf.Session(graph=detection_graph)
 
+
 # ************** Define input and output for the object detection classifier *************** #
 
 
@@ -119,6 +120,7 @@ detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')
 
 # Number of objects detected
 num_detections = detection_graph.get_tensor_by_name('num_detections:0')
+
 
 # *********************** Initialize other parameters **************************** #
 
@@ -181,32 +183,70 @@ def spot_check_vision(current_frame):
             x = int(((boxes[0][detected_object_index][1] + boxes[0][detected_object_index][3]) / 2) * IM_WIDTH)
             y = int(((boxes[0][detected_object_index][0] + boxes[0][detected_object_index][2]) / 2) * IM_HEIGHT)
             object_coordinates.append((x, y))
-            cv2.circle(current_frame, (x, y), 7, (75, 13, 180), -1)
+            cv2.circle(current_frame, (x, y), 7, (0, 0, 255), -1)
         detected_object_index += 1
 
     for spot in parking_spots:
         spot_changed = False
+        object_detected = False
         for coord in object_coordinates:
+            # If an object is detected within the spot and the spot is currently open
             if (spot.TopLeftXCoordinate < coord[0]) and (spot.BottomRightXCoordinate > coord[0]) and (
-                    spot.TopLeftYCoordinate < coord[1]) and (spot.BottomRightYCoordinate > coord[1]):
-                spot.IsOpen = False
+                    spot.TopLeftYCoordinate < coord[1]) and (spot.BottomRightYCoordinate > coord[1])\
+                    and spot.IsOpen is True:
+                object_detected = True
                 spot_changed = True
+                spot.OccupiedCounter += 1
+                spot.EmptyCounter = 0
+                print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(
+                    spot.OccupiedCounter) + " " + "Empty Counter: " + str(
+                    spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
+                if spot.OccupiedCounter is 10:
+                    spot.IsOpen = False
                 break
-        if spot_changed is False:
-            spot.IsOpen = True
+
+            # If an object is detected within the spot and the spot is currently taken
+            if (spot.TopLeftXCoordinate < coord[0]) and (spot.BottomRightXCoordinate > coord[0]) and (
+                    spot.TopLeftYCoordinate < coord[1]) and (spot.BottomRightYCoordinate > coord[1]) \
+                    and spot.IsOpen is False:
+                object_detected = True
+                spot_changed = False
+                spot.OccupiedCounter = 0
+                spot.EmptyCounter = 0
+                print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(
+                    spot.OccupiedCounter) + " " + "Empty Counter: " + str(
+                    spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
+                break
+        # If none of the objects were found in the spot and the spot is currently open
+        if object_detected is False and spot.IsOpen is True:
+            spot_changed = False
+            spot.OccupiedCounter = 0
+            spot.EmptyCounter = 0
+            print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(
+                spot.OccupiedCounter) + " " + "Empty Counter: " + str(
+                spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
+
+        # If none of the objects were found in the spot and the spot is currently taken ie. Change
+        if object_detected is False and spot.IsOpen is False:
+            spot_changed = True
+            spot.EmptyCounter += 1
+            spot.OccupiedCounter = 0
+            print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(
+                spot.OccupiedCounter) + " " + "Empty Counter: " + str(
+                spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
+            if spot.EmptyCounter is 10:
+                spot.IsOpen = True
+
         top_left = (spot.TopLeftXCoordinate, spot.TopLeftYCoordinate)
         bottom_right = (spot.BottomRightXCoordinate, spot.BottomRightYCoordinate)
-        if spot.OccupiedCounter > 10:
-            spot.IsOpen = False
-        # If a spot is open, it can have movement
-        if spot.IsOpen is True and spot.HasMovement is False:
+        if spot.IsOpen is True and spot_changed is False:
             cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 0), 2)
-        if spot.IsOpen is True and spot.HasMovement is True:
+        if spot.IsOpen is True and spot_changed is True:
             cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 255), 2)
-        if spot.IsOpen is False:
+        if spot.IsOpen is False and spot_changed is False:
             cv2.rectangle(current_frame, top_left, bottom_right, (0, 0, 255), 2)
-
-            #
+        if spot.IsOpen is False and spot_changed is True:
+            cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 255), 2)
 
     return current_frame
 
