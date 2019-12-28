@@ -1,6 +1,7 @@
 import requests
 import ParkingSpot
 import json
+import datetime
 
 address = "http://173.91.255.135:8080/SpotCheckServer-2.1.8.RELEASE/"
 
@@ -95,3 +96,27 @@ def get_all_devices():
     except Exception as err:
         print(str(err) + " from ApiConnect.get_all_devices")
         return None
+
+
+def update_parking_spots(parking_spots):
+    try:
+        now = datetime.datetime.now()
+        date_time = now.strftime("%Y-%m-%d")
+
+        url = address + 'parkingSpot/updateMultipleParkingSpotsAvailabilityBySpotId'
+        body = []
+        for spot in parking_spots:
+            body.append({'spotId': spot.ParkingSpotID, 'floorNum': '0', 'lotId': '0', 'openFlag': spot.IsOpen, 'deviceId': '0', 'topLeftXCoordinate': '0', 'topLeftYCoordinate': '0', 'bottomRightXCoordinate': '0', 'bottomRightYCoordinate': '0', 'updateDate': date_time})
+        headers = {'Content-type': 'application/json'}
+        r = requests.post(url=url, headers=headers, data=json.dumps(body))
+        data = r.text
+        status_code = r.status_code
+
+        if status_code == 200:
+            return True
+        else:
+            return False
+
+    except Exception as err:
+        print(str(err) + " from ApiConnect.update_parking_spots")
+        return False

@@ -25,6 +25,7 @@ from picamera.array import PiRGBArray
 from picamera import PiCamera
 import tensorflow as tf
 import sys
+import datetime
 
 import ParkingSpot
 import ApiConnect
@@ -45,9 +46,11 @@ else:
 # *********** Initialize TensorFlow model that will be deployed ************ #
 
 
-# Set up camera constants
+# Set up constants
 IM_WIDTH = 1280
 IM_HEIGHT = 720
+SPOT_CHANGE_LENGTH = 10
+API_TRIGGER_LENGTH = 120
 camera_type = 'picamera'
 
 # This is needed since the working directory is the object_detection folder.
@@ -142,13 +145,14 @@ elif len(parking_spots) < 1:
 else:
     print(str(len(parking_spots)) + " Parking spot(s) linked to current device.")
 
+api_counter = 0
 
 # ********************* Spot Check Vision Function ************************ #
 
 
 def spot_check_vision(current_frame):
-    # Use globals for the control variables so they retain their value after function exits
-    # global parking_spots
+    global api_counter
+    api_counter += 1
 
     frame_expanded = np.expand_dims(current_frame, axis=0)
 
@@ -161,7 +165,7 @@ def spot_check_vision(current_frame):
     vis_util.visualize_boxes_and_labels_on_image_array(current_frame, np.squeeze(boxes),
                                                        np.squeeze(classes).astype(np.int32), np.squeeze(scores),
                                                        category_index, use_normalized_coordinates=True,
-                                                       line_thickness=2, min_score_thresh=0.45)
+                                                       line_thickness=0, min_score_thresh=0.45)
 
     # Draw parking spots labels
     for p in parking_spots:
@@ -174,8 +178,9 @@ def spot_check_vision(current_frame):
     # classes array is an array of all detected objects and what they have been classified as
     # the boxes array holds coordinates of detected objects that we can use
     # boxes[0][objectIndex] variable holds coordinates of detected objects as (ymin, xmin, ymax, xmax)
-    object_coordinates = []
 
+    # Get all detected vehicles
+    object_coordinates = []
     detected_object_index = 0
     for detected_object in classes[0]:
         if detected_object in required_index_list:
@@ -186,10 +191,12 @@ def spot_check_vision(current_frame):
             cv2.circle(current_frame, (x, y), 7, (0, 0, 255), -1)
         detected_object_index += 1
 
+    # Run calculations to determine if a spot is available, occupied, or currently changing
     for spot in parking_spots:
         spot_changed = False
         object_detected = False
         for coord in object_coordinates:
+
             # If an object is detected within the spot and the spot is currently open
             if (spot.TopLeftXCoordinate < coord[0]) and (spot.BottomRightXCoordinate > coord[0]) and (
                     spot.TopLeftYCoordinate < coord[1]) and (spot.BottomRightYCoordinate > coord[1])\
@@ -198,11 +205,10 @@ def spot_check_vision(current_frame):
                 spot_changed = True
                 spot.OccupiedCounter += 1
                 spot.EmptyCounter = 0
-                print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(
-                    spot.OccupiedCounter) + " " + "Empty Counter: " + str(
-                    spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
-                if spot.OccupiedCounter is 10:
+                 #print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(spot.OccupiedCounter) + " " + "Empty Counter: " + str(spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
+                if spot.OccupiedCounter is SPOT_CHANGE_LENGTH:
                     spot.IsOpen = False
+                    spot_changed = False
                 break
 
             # If an object is detected within the spot and the spot is currently taken
@@ -213,40 +219,49 @@ def spot_check_vision(current_frame):
                 spot_changed = False
                 spot.OccupiedCounter = 0
                 spot.EmptyCounter = 0
-                print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(
-                    spot.OccupiedCounter) + " " + "Empty Counter: " + str(
-                    spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
+                # print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(spot.OccupiedCounter) + " " + "Empty Counter: " + str(spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
                 break
         # If none of the objects were found in the spot and the spot is currently open
         if object_detected is False and spot.IsOpen is True:
             spot_changed = False
             spot.OccupiedCounter = 0
             spot.EmptyCounter = 0
-            print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(
-                spot.OccupiedCounter) + " " + "Empty Counter: " + str(
-                spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
+            # print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(spot.OccupiedCounter) + " " + "Empty Counter: " + str(spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
 
         # If none of the objects were found in the spot and the spot is currently taken ie. Change
         if object_detected is False and spot.IsOpen is False:
             spot_changed = True
             spot.EmptyCounter += 1
             spot.OccupiedCounter = 0
-            print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(
-                spot.OccupiedCounter) + " " + "Empty Counter: " + str(
-                spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
-            if spot.EmptyCounter is 10:
+            # print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(spot.OccupiedCounter) + " " + "Empty Counter: " + str(spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
+            if spot.EmptyCounter is SPOT_CHANGE_LENGTH:
                 spot.IsOpen = True
+                spot_changed = False
 
+        # Draw parking space lines based on if it is occupied, available, or changing
         top_left = (spot.TopLeftXCoordinate, spot.TopLeftYCoordinate)
         bottom_right = (spot.BottomRightXCoordinate, spot.BottomRightYCoordinate)
         if spot.IsOpen is True and spot_changed is False:
             cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 0), 2)
         if spot.IsOpen is True and spot_changed is True:
-            cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 255), 2)
+            cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 0), 2)
+            cv2.rectangle(current_frame, (top_left[0] + 2, top_left[1] + 2), (bottom_right[0] - 2, bottom_right[1] - 2), (0, 255, 255), 2)
         if spot.IsOpen is False and spot_changed is False:
             cv2.rectangle(current_frame, top_left, bottom_right, (0, 0, 255), 2)
         if spot.IsOpen is False and spot_changed is True:
-            cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 255), 2)
+            cv2.rectangle(current_frame, top_left, bottom_right, (0, 0, 255), 2)
+            cv2.rectangle(current_frame, (top_left[0] + 2, top_left[1] + 2), (bottom_right[0] - 2, bottom_right[1] - 2), (0, 255, 255), 2)
+
+    # Send parking spot data to API
+    if api_counter % API_TRIGGER_LENGTH == 0:
+        api_result = ApiConnect.update_parking_spots(parking_spots)
+        now = datetime.datetime.now()
+        date_time = now.strftime("%m/%d/%Y %H:%M:%S")
+        if api_result:
+            print("Database updated at: " + str(date_time) + ".")
+        else:
+            print("Database failed to update. Application exit at " + str(date_time) + ".")
+            sys.exit()
 
     return current_frame
 
@@ -258,7 +273,7 @@ if camera_type == 'picamera':
     # Initialize Picamera and grab reference to the raw capture
     camera = PiCamera()
     camera.resolution = (IM_WIDTH, IM_HEIGHT)
-    camera.framerate = 1
+    camera.framerate = 10
     rawCapture = PiRGBArray(camera, size=(IM_WIDTH, IM_HEIGHT))
     rawCapture.truncate(0)
 
@@ -292,7 +307,5 @@ if camera_type == 'picamera':
             break
 
         rawCapture.truncate(0)
-
     camera.close()
-
 cv2.destroyAllWindows()
