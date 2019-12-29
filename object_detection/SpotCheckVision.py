@@ -49,7 +49,7 @@ else:
 # Set up constants
 IM_WIDTH = 1280
 IM_HEIGHT = 720
-SPOT_CHANGE_LENGTH = 10
+SPOT_CHANGE_LENGTH = 30
 API_TRIGGER_LENGTH = 120
 camera_type = 'picamera'
 
@@ -147,6 +147,7 @@ else:
 
 api_counter = 0
 
+
 # ********************* Spot Check Vision Function ************************ #
 
 
@@ -162,17 +163,17 @@ def spot_check_vision(current_frame):
         feed_dict={image_tensor: frame_expanded})
 
     # Draw the results of the detection
-    vis_util.visualize_boxes_and_labels_on_image_array(current_frame, np.squeeze(boxes),
-                                                       np.squeeze(classes).astype(np.int32), np.squeeze(scores),
-                                                       category_index, use_normalized_coordinates=True,
-                                                       line_thickness=0, min_score_thresh=0.45)
+    # vis_util.visualize_boxes_and_labels_on_image_array(current_frame, np.squeeze(boxes),
+                                                       # np.squeeze(classes).astype(np.int32), np.squeeze(scores),
+                                                       # category_index, use_normalized_coordinates=True,
+                                                       # line_thickness=0, min_score_thresh=0.45)
 
     # Draw parking spots labels
     for p in parking_spots:
         top_left = (p.TopLeftXCoordinate, p.TopLeftYCoordinate)
-        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0] + 10, top_left[1] - 10), font, 1, (0, 0, 0),
+        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0], top_left[1] - 5), font, .7, (0, 0, 0),
                     2, cv2.LINE_AA)
-        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0] + 10, top_left[1] - 10), font, 1,
+        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0], top_left[1] - 5), font, .7,
                     (255, 255, 255), 1, cv2.LINE_AA)
 
     # classes array is an array of all detected objects and what they have been classified as
@@ -188,7 +189,7 @@ def spot_check_vision(current_frame):
             x = int(((boxes[0][detected_object_index][1] + boxes[0][detected_object_index][3]) / 2) * IM_WIDTH)
             y = int(((boxes[0][detected_object_index][0] + boxes[0][detected_object_index][2]) / 2) * IM_HEIGHT)
             object_coordinates.append((x, y))
-            cv2.circle(current_frame, (x, y), 7, (0, 0, 255), -1)
+            # cv2.circle(current_frame, (x, y), 7, (0, 0, 255), -1)
         detected_object_index += 1
 
     # Run calculations to determine if a spot is available, occupied, or currently changing
@@ -245,12 +246,25 @@ def spot_check_vision(current_frame):
             cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 0), 2)
         if spot.IsOpen is True and spot_changed is True:
             cv2.rectangle(current_frame, top_left, bottom_right, (0, 255, 0), 2)
-            cv2.rectangle(current_frame, (top_left[0] + 2, top_left[1] + 2), (bottom_right[0] - 2, bottom_right[1] - 2), (0, 255, 255), 2)
+            if spot.OccupiedCounter % 2 == 0:
+                cv2.rectangle(current_frame, (top_left[0] + 2, top_left[1] + 2), (bottom_right[0] - 2, bottom_right[1] - 2), (0, 255, 255), 2)
         if spot.IsOpen is False and spot_changed is False:
             cv2.rectangle(current_frame, top_left, bottom_right, (0, 0, 255), 2)
         if spot.IsOpen is False and spot_changed is True:
             cv2.rectangle(current_frame, top_left, bottom_right, (0, 0, 255), 2)
-            cv2.rectangle(current_frame, (top_left[0] + 2, top_left[1] + 2), (bottom_right[0] - 2, bottom_right[1] - 2), (0, 255, 255), 2)
+            if spot.EmptyCounter % 2 == 0:
+                cv2.rectangle(current_frame, (top_left[0] + 2, top_left[1] + 2), (bottom_right[0] - 2, bottom_right[1] - 2), (0, 255, 255), 2)
+
+    total_spots = 0
+    open_spots = 0
+
+    for spot in parking_spots:
+        total_spots += 1
+        if spot.IsOpen:
+            open_spots += 1
+
+    cv2.putText(frame, "Open Spots: " + str(open_spots) + "/" + str(total_spots), (8, 50), font, .7, (0, 0, 0), 2, cv2.LINE_AA)
+    cv2.putText(frame, "Open Spots: " + str(open_spots) + "/" + str(total_spots), (8, 50), font, .7, (255, 255, 255), 1, cv2.LINE_AA)
 
     # Send parking spot data to API
     if api_counter % API_TRIGGER_LENGTH == 0:
@@ -292,7 +306,8 @@ if camera_type == 'picamera':
         frame = spot_check_vision(frame)
 
         # Draw FPS
-        cv2.putText(frame, "FPS: {0:.2f}".format(frame_rate_calc), (30, 50), font, 1, (255, 255, 0), 2, cv2.LINE_AA)
+        cv2.putText(frame, "FPS: {0:.2f}".format(frame_rate_calc), (8, 25), font, .7, (0, 0, 0), 2, cv2.LINE_AA)
+        cv2.putText(frame, "FPS: {0:.2f}".format(frame_rate_calc), (8, 25), font, .7, (255, 255, 255), 1, cv2.LINE_AA)
 
         # All the results have been drawn on the frame, so it's time to display it.
         cv2.imshow('Object detector', frame)

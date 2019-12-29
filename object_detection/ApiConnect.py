@@ -101,7 +101,7 @@ def get_all_devices():
 def update_parking_spots(parking_spots):
     try:
         now = datetime.datetime.now()
-        date_time = now.strftime("%Y-%m-%d")
+        date_time = now.strftime("%Y-%m-%d %H:%M:%S")
 
         url = address + 'parkingSpot/updateMultipleParkingSpotsAvailabilityBySpotId'
         body = []
