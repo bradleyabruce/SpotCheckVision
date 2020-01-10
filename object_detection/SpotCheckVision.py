@@ -14,7 +14,7 @@
 # checks the location of the vehicle in the frame, updates the correct parking spot
 # if a car has been detected there
 #
-# The framework is based off the Object_detection_picamera.py script located here:
+# The framework is based off the Object_detection_picamera script located here:
 # https://github.com/EdjeElectronics/TensorFlow-Object-Detection-on-the-Raspberry-Pi/blob/master/Object_detection_picamera.py
 # ***********************************************************************
 
@@ -27,16 +27,17 @@ import tensorflow as tf
 import sys
 import datetime
 
-import ParkingSpot
+import Spot
 import ApiConnect
 import DeviceUpdate
+import Device
 
 
 # **************** Run scripts to Update Raspberry Pi ******************* #
 
 
-device_id = DeviceUpdate.initialize_raspberry_pi(1)
-if device_id is not None:
+device = DeviceUpdate.initialize_raspberry_pi()
+if device is not None:
     print("Raspberry Pi initialized.")
 else:
     print("Raspberry Pi could not be initialized.")
@@ -134,7 +135,7 @@ freq = cv2.getTickFrequency()
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 # Get list of all parking spots
-parking_spots = ApiConnect.get_parking_spots_by_device_id(device_id)
+parking_spots = ApiConnect.get_parking_spots_by_device_id(device.DeviceId)
 
 if parking_spots is None:
     print("Error retrieving parking spots for device.")

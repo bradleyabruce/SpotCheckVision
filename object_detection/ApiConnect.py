@@ -1,7 +1,8 @@
 import requests
-import ParkingSpot
+import Spot
 import json
 import datetime
+import Device
 
 address = "http://173.91.255.135:8080/SpotCheckServer-2.1.8.RELEASE/"
 
@@ -21,7 +22,7 @@ def get_parking_spots_by_device_id(device_id):
         if status_code == 200:
             parking_spot_json = json.loads(r.text)
             for p in parking_spot_json:
-                parking_spot = ParkingSpot.decoder(p)
+                parking_spot = Spot.decoder(p)
                 parking_spots.append(parking_spot)
             return parking_spots
         else:
@@ -37,8 +38,7 @@ def update_device(device):
     try:
         url = address + 'device/updateDevice'
         body = {'deviceId': device.DeviceId, 'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress,
-                'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lotId': device.LotId,
-                'floorNumber': device.FloorNumber, 'lastUpdateDate': str(device.LastUpdateDate)}
+                'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lastUpdateDate': str(device.LastUpdateDate), 'companyId': device.CompanyId, 'takeNewImage': device.TakeNewImage}
         headers = {'Content-type': 'application/json'}
 
         r = requests.post(url=url, headers=headers, data=json.dumps(body))
@@ -59,9 +59,8 @@ def create_device(device):
     try:
         url = address + 'device/createDevice'
         body = {'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress,
-                'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lotId': device.LotId,
-                'floorNumber': device.FloorNumber, 'lastUpdateDate': str(device.LastUpdateDate),
-                'companyId': device.CompanyID}
+                'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lastUpdateDate': str(device.LastUpdateDate),
+                'companyId': device.CompanyID, 'takeNewImage': device.TakeNewImage}
         headers = {'Content-type': 'application/json'}
 
         r = requests.post(url=url, headers=headers, data=json.dumps(body))
@@ -80,6 +79,8 @@ def create_device(device):
 
 def get_all_devices():
     try:
+        devices = []
+
         url = address + 'device/getDevices'
         headers = {'Content-type': 'application/json'}
 
@@ -87,8 +88,11 @@ def get_all_devices():
         status_code = r.status_code
 
         if status_code == 200:
-            device_list = json.loads(r.text)
-            return device_list
+            device_json = json.loads(r.text)
+            for d in device_json:
+                device = Device.decoder(d)
+                devices.append(device)
+            return devices
         else:
             print(r.text)
             return None
@@ -106,7 +110,7 @@ def update_parking_spots(parking_spots):
         url = address + 'parkingSpot/updateMultipleParkingSpotsAvailabilityBySpotId'
         body = []
         for spot in parking_spots:
-            body.append({'spotId': spot.ParkingSpotID, 'floorNum': '0', 'lotId': '0', 'openFlag': spot.IsOpen, 'deviceId': '0', 'topLeftXCoordinate': '0', 'topLeftYCoordinate': '0', 'bottomRightXCoordinate': '0', 'bottomRightYCoordinate': '0', 'updateDate': date_time})
+            body.append({'spotId': spot.ParkingSpotID, 'floorNum': '0', 'lotId': '0', 'isOpen': spot.IsOpen, 'deviceId': '0', 'topLeftXCoordinate': '0', 'topLeftYCoordinate': '0', 'bottomRightXCoordinate': '0', 'bottomRightYCoordinate': '0', 'updateDate': date_time})
         headers = {'Content-type': 'application/json'}
         r = requests.post(url=url, headers=headers, data=json.dumps(body))
         data = r.text

@@ -1,23 +1,20 @@
 import socket
 import urllib
 import uuid
+import Device
 
 
-def get_device_id(devices=[]):
+def get_device_from_list(devices=[]):
     try:
         current_mac_address = get_mac_address()
-        device_id = None
         for device in devices:
-            if device['macAddress'] == current_mac_address:
-                device_id = device['deviceID']
-                return device_id
-
+            if device.MacAddress == current_mac_address:
+                return device
         return None
 
     except Exception:
         # most likely to catch if list of devices is empty
         return None
-
 
 
 def get_host_name():
