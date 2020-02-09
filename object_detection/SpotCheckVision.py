@@ -58,7 +58,7 @@ camera_type = 'picamera'
 sys.path.append('..')
 
 # Name of the directory containing the object detection module we're using
-MODEL_NAME = 'ssdlite_mobilenet_v2_coco_2018_05_09'
+MODEL_NAME = 'ssd_inception_v2_coco_2018_01_28'
 
 # Grab path to current working directory
 CWD_PATH = os.getcwd()
@@ -89,12 +89,12 @@ category_index = label_map_util.create_category_index(categories)
 required_index_list = [3, 4, 8]
 unused_index_list = []
 
-for index in category_index:
-    if index not in required_index_list:
-        unused_index_list.append(index)
+# for index in category_index:
+    # if index not in required_index_list:
+        # unused_index_list.append(index)
 
-for index in unused_index_list:
-    category_index.pop(index, None)
+# for index in unused_index_list:
+    # category_index.pop(index, None)
 
 # Load the TensorFlow model into memory.
 detection_graph = tf.Graph()
@@ -135,7 +135,7 @@ freq = cv2.getTickFrequency()
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 # Get list of all parking spots
-parking_spots = ApiConnect.get_parking_spots_by_device_id(device.DeviceId)
+parking_spots = ApiConnect.get_parking_spots_by_device_id(device.DeviceID)
 
 if parking_spots is None:
     print("Error retrieving parking spots for device.")
@@ -165,16 +165,16 @@ def spot_check_vision(current_frame):
 
     # Draw the results of the detection
     # vis_util.visualize_boxes_and_labels_on_image_array(current_frame, np.squeeze(boxes),
-                                                       # np.squeeze(classes).astype(np.int32), np.squeeze(scores),
-                                                       # category_index, use_normalized_coordinates=True,
-                                                       # line_thickness=0, min_score_thresh=0.45)
+                                                        # np.squeeze(classes).astype(np.int32), np.squeeze(scores),
+                                                        # category_index, use_normalized_coordinates=True,
+                                                        # line_thickness=0, min_score_thresh=0.45)
 
     # Draw parking spots labels
     for p in parking_spots:
         top_left = (p.TopLeftXCoordinate, p.TopLeftYCoordinate)
-        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0], top_left[1] - 5), font, .7, (0, 0, 0),
+        cv2.putText(frame, "SpotID: " + str(p.SpotID), (top_left[0], top_left[1] - 5), font, .7, (0, 0, 0),
                     2, cv2.LINE_AA)
-        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0], top_left[1] - 5), font, .7,
+        cv2.putText(frame, "SpotID: " + str(p.SpotID), (top_left[0], top_left[1] - 5), font, .7,
                     (255, 255, 255), 1, cv2.LINE_AA)
 
     # classes array is an array of all detected objects and what they have been classified as
@@ -190,7 +190,7 @@ def spot_check_vision(current_frame):
             x = int(((boxes[0][detected_object_index][1] + boxes[0][detected_object_index][3]) / 2) * IM_WIDTH)
             y = int(((boxes[0][detected_object_index][0] + boxes[0][detected_object_index][2]) / 2) * IM_HEIGHT)
             object_coordinates.append((x, y))
-            # cv2.circle(current_frame, (x, y), 7, (0, 0, 255), -1)
+            cv2.circle(current_frame, (x, y), 7, (0, 0, 255), -1)
         detected_object_index += 1
 
     # Run calculations to determine if a spot is available, occupied, or currently changing

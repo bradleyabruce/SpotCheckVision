@@ -31,10 +31,10 @@ def initialize_raspberry_pi():
         new_device = Device.Device(None, DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(),
                                    DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), datetime.datetime.now(), None, True)
         new_device_id = ApiConnect.create_device(new_device)
-        new_device.DeviceId = new_device_id
+        new_device.DeviceID = new_device_id
 
         # Check to see if newly inserted DeviceId is valid
-        if new_device.DeviceId is not None:
+        if new_device.DeviceID is not None:
             print("Database Entry Inserted.")
             return new_device
 
@@ -45,8 +45,8 @@ def initialize_raspberry_pi():
     # if device exists in database, update the database
     else:
         print("Updating Existing Database Entry...")
-        updated_device = Device.Device(device_from_db.DeviceId, DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(),
-                               DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), datetime.datetime.now(), device_from_db.CompanyId, device_from_db.TakeNewImage)
+        updated_device = Device.Device(device_from_db.DeviceID, DeviceGetInformation.get_host_name(), DeviceGetInformation.get_local_ip(),
+                               DeviceGetInformation.get_external_ip(), DeviceGetInformation.get_mac_address(), datetime.datetime.now(), device_from_db.CompanyID, device_from_db.TakeNewImage)
 
         is_updated = ApiConnect.update_device(updated_device)
         if is_updated:

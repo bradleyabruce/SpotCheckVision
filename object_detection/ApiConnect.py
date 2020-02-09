@@ -37,8 +37,8 @@ def get_parking_spots_by_device_id(device_id):
 def update_device(device):
     try:
         url = address + 'device/updateDevice'
-        body = {'deviceId': device.DeviceId, 'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress,
-                'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lastUpdateDate': str(device.LastUpdateDate), 'companyId': device.CompanyId, 'takeNewImage': device.TakeNewImage}
+        body = {'deviceID': device.DeviceID, 'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress,
+                'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lastUpdateDate': str(device.LastUpdateDate), 'companyID': device.CompanyID}
         headers = {'Content-type': 'application/json'}
 
         r = requests.post(url=url, headers=headers, data=json.dumps(body))
@@ -60,7 +60,7 @@ def create_device(device):
         url = address + 'device/createDevice'
         body = {'deviceName': device.DeviceName, 'localIpAddress': device.LocalIpAddress,
                 'externalIpAddress': device.ExternalIpAddress, 'macAddress': device.MacAddress, 'lastUpdateDate': str(device.LastUpdateDate),
-                'companyId': device.CompanyID, 'takeNewImage': device.TakeNewImage}
+                'companyID': device.CompanyID, 'takeNewImage': device.TakeNewImage}
         headers = {'Content-type': 'application/json'}
 
         r = requests.post(url=url, headers=headers, data=json.dumps(body))
@@ -110,7 +110,7 @@ def update_parking_spots(parking_spots):
         url = address + 'parkingSpot/updateMultipleParkingSpotsAvailabilityBySpotId'
         body = []
         for spot in parking_spots:
-            body.append({'spotId': spot.ParkingSpotID, 'floorNum': '0', 'lotId': '0', 'isOpen': spot.IsOpen, 'deviceId': '0', 'topLeftXCoordinate': '0', 'topLeftYCoordinate': '0', 'bottomRightXCoordinate': '0', 'bottomRightYCoordinate': '0', 'updateDate': date_time})
+            body.append({'spotId': spot.SpotID, 'floorNum': '0', 'lotId': '0', 'isOpen': spot.IsOpen, 'deviceId': '0', 'topLeftXCoordinate': '0', 'topLeftYCoordinate': '0', 'bottomRightXCoordinate': '0', 'bottomRightYCoordinate': '0', 'updateDate': date_time})
         headers = {'Content-type': 'application/json'}
         r = requests.post(url=url, headers=headers, data=json.dumps(body))
         data = r.text
