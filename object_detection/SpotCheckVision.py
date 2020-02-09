@@ -21,11 +21,13 @@
 import os
 import cv2
 import numpy as np
-from picamera.array import PiRGBArray
-from picamera import PiCamera
+# from picamera.array import PiRGBArray
+# from picamera import PiCamera
+from matplotlib import pyplot as plt
 import tensorflow as tf
 import sys
 import datetime
+import time
 
 import Spot
 import ApiConnect
@@ -58,7 +60,7 @@ camera_type = 'picamera'
 sys.path.append('..')
 
 # Name of the directory containing the object detection module we're using
-MODEL_NAME = 'ssdlite_mobilenet_v2_coco_2018_05_09'
+MODEL_NAME = 'ssd_inception_v2_coco_2018_01_28'
 
 # Grab path to current working directory
 CWD_PATH = os.getcwd()
@@ -89,12 +91,6 @@ category_index = label_map_util.create_category_index(categories)
 required_index_list = [3, 4, 8]
 unused_index_list = []
 
-for index in category_index:
-    if index not in required_index_list:
-        unused_index_list.append(index)
-
-for index in unused_index_list:
-    category_index.pop(index, None)
 
 # Load the TensorFlow model into memory.
 detection_graph = tf.Graph()
@@ -135,7 +131,7 @@ freq = cv2.getTickFrequency()
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 # Get list of all parking spots
-parking_spots = ApiConnect.get_parking_spots_by_device_id(device.DeviceId)
+parking_spots = ApiConnect.get_parking_spots_by_device_id(device.DeviceID)
 
 if parking_spots is None:
     print("Error retrieving parking spots for device.")
@@ -164,17 +160,17 @@ def spot_check_vision(current_frame):
         feed_dict={image_tensor: frame_expanded})
 
     # Draw the results of the detection
-    # vis_util.visualize_boxes_and_labels_on_image_array(current_frame, np.squeeze(boxes),
-                                                       # np.squeeze(classes).astype(np.int32), np.squeeze(scores),
-                                                       # category_index, use_normalized_coordinates=True,
-                                                       # line_thickness=0, min_score_thresh=0.45)
+    vis_util.visualize_boxes_and_labels_on_image_array(current_frame, np.squeeze(boxes),
+                                                        np.squeeze(classes).astype(np.int32), np.squeeze(scores),
+                                                        category_index, use_normalized_coordinates=True,
+                                                        line_thickness=0, min_score_thresh=0.45)
 
     # Draw parking spots labels
     for p in parking_spots:
         top_left = (p.TopLeftXCoordinate, p.TopLeftYCoordinate)
-        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0], top_left[1] - 5), font, .7, (0, 0, 0),
+        cv2.putText(frame, "SpotID: " + str(p.SpotID), (top_left[0], top_left[1] - 5), font, .7, (0, 0, 0),
                     2, cv2.LINE_AA)
-        cv2.putText(frame, "SpotID: " + str(p.ParkingSpotID), (top_left[0], top_left[1] - 5), font, .7,
+        cv2.putText(frame, "SpotID: " + str(p.SpotID), (top_left[0], top_left[1] - 5), font, .7,
                     (255, 255, 255), 1, cv2.LINE_AA)
 
     # classes array is an array of all detected objects and what they have been classified as
@@ -269,14 +265,14 @@ def spot_check_vision(current_frame):
 
     # Send parking spot data to API
     if api_counter % API_TRIGGER_LENGTH == 0:
-        api_result = ApiConnect.update_parking_spots(parking_spots)
+        #api_result = ApiConnect.update_parking_spots(parking_spots)
         now = datetime.datetime.now()
         date_time = now.strftime("%m/%d/%Y %H:%M:%S")
-        if api_result:
-            print("Database updated at: " + str(date_time) + ".")
-        else:
-            print("Database failed to update. Application exit at " + str(date_time) + ".")
-            sys.exit()
+        #if api_result:
+        #    print("Database updated at: " + str(date_time) + ".")
+        #else:
+        #    print("Database failed to update. Application exit at " + str(date_time) + ".")
+        #    sys.exit()
 
     return current_frame
 
@@ -285,22 +281,30 @@ def spot_check_vision(current_frame):
 
 
 if camera_type == 'picamera':
-    # Initialize Picamera and grab reference to the raw capture
-    camera = PiCamera()
-    camera.resolution = (IM_WIDTH, IM_HEIGHT)
-    camera.framerate = 10
-    rawCapture = PiRGBArray(camera, size=(IM_WIDTH, IM_HEIGHT))
-    rawCapture.truncate(0)
+    # Initialize camera and grab reference to the raw capture
+    camera = cv2.VideoCapture(0)
+    camera.set(3, IM_WIDTH)
+
+    camera.set(4, IM_HEIGHT)
+
+    # time.sleep(2)
+
+    camera.set(15, -8.0)
+    # camera.framerate = 10
+    # camera.resolution = (IM_WIDTH, IM_HEIGHT)
+    # rawCapture = PiRGBArray(camera, size=(IM_WIDTH, IM_HEIGHT))
+    # rawCapture.truncate(0)
 
     # Continuously capture frames and perform object detection on them
-    for frame1 in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-
+    # for frame1 in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+    while True:
+        return_value, frame1 = camera.read()
         t1 = cv2.getTickCount()
 
         # Acquire frame and expand frame dimensions to have shape: [1, None, None, 3]
         # i.e. a single-column array, where each item in the column has the pixel RGB value
         # frame = frame1.array
-        frame = np.copy(frame1.array)
+        frame = np.asarray(frame1)
         frame.setflags(write=1)
 
         # Pass frame into pet detection function
@@ -322,6 +326,6 @@ if camera_type == 'picamera':
         if cv2.waitKey(1) == ord('q'):
             break
 
-        rawCapture.truncate(0)
+        # rawCapture.truncate(0)
     camera.close()
 cv2.destroyAllWindows()

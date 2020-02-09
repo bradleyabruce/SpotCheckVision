@@ -1,6 +1,6 @@
 class Spot:
     def __init__(self, spotID, isOpen, deviceID, topLeftXCoordinate, topLeftYCoordinate, bottomRightXCoordinate, bottomRightYCoordinate, occupiedCounter, emptyCounter, updateDate):
-        self.PpotID = spotID
+        self.SpotID = spotID
         self.IsOpen = True
         self.DeviceID = deviceID
         self.TopLeftXCoordinate = topLeftXCoordinate
