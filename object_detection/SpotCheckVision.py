@@ -23,22 +23,18 @@ import cv2
 import numpy as np
 # from picamera.array import PiRGBArray
 # from picamera import PiCamera
-from matplotlib import pyplot as plt
 import tensorflow as tf
 import sys
 import datetime
 import time
-
-import Spot
-import ApiConnect
-import DeviceUpdate
-import Device
-
+import Initialize
+from BL import Device
+import DeviceStatusEnum
 
 # **************** Run scripts to Update Raspberry Pi ******************* #
+from IoC.IoC import IoC
 
-
-device = DeviceUpdate.initialize_raspberry_pi()
+device = Initialize.initialize_raspberry_pi()
 if device is not None:
     print("Raspberry Pi initialized.")
 else:
@@ -130,8 +126,25 @@ frame_rate_calc = 1
 freq = cv2.getTickFrequency()
 font = cv2.FONT_HERSHEY_SIMPLEX
 
+# while the device is undeployed, we need to check for updates to it.
+apiCallCount = 0
+while device.DeviceStatusID is DeviceStatusEnum.DeviceStatus.Undeployed.value:
+    time.sleep(3)
+    device = device.fill()
+    apiCallCount += 1
+    if device.TakeNewImage:
+        image_encoded_string = device.takeImage()
+        if image_encoded_string is not None:
+            print(image_encoded_string)
+        else:
+            print("Error encoding image.")
+    else:
+        if apiCallCount % 10 == 0 or apiCallCount == 0:
+            print("Awaiting Deployment Update")
+
+
 # Get list of all parking spots
-parking_spots = ApiConnect.get_parking_spots_by_device_id(device.DeviceID)
+parking_spots = IoC.getAllDevices()
 
 if parking_spots is None:
     print("Error retrieving parking spots for device.")
@@ -144,9 +157,13 @@ else:
 
 api_counter = 0
 
+# ******************** Spot Check Undeployed Wait Function **************************** #
+# def spot_check_undeployed():
+
+
+
 
 # ********************* Spot Check Vision Function ************************ #
-
 
 def spot_check_vision(current_frame):
     global api_counter
@@ -327,5 +344,5 @@ if camera_type == 'picamera':
             break
 
         # rawCapture.truncate(0)
-    camera.close()
+    camera.release()
 cv2.destroyAllWindows()
