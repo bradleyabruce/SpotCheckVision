@@ -8,14 +8,14 @@ def initialize_raspberry_pi():
 
     device = Device.Device.constructEmpty()
     # Attempt to connect to the network
-    is_connected = device.isConnected()
+    is_connected = Device.Device.isConnected()
     connection_try_count = 0
 
     while not is_connected:
         print("Connection Attempt: " + str(connection_try_count + 1) + ".")
         time.sleep(5)
         connection_try_count += 1
-        is_connected = device.is_connected()
+        is_connected = Device.Device.isConnected()
 
     # Check to see if device is already in the database by getting all devices and verifying the DeviceID
     device_list = IoC.getAllDevices()
