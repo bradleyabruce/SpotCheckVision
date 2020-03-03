@@ -120,7 +120,7 @@ class Device:
 
     def imageProcessing(self, current_frame, parking_spots, sess, detection_boxes, detection_scores, detection_classes,
                         num_detections, image_tensor, category_index, required_index_list,
-                        IM_WIDTH, IM_HEIGHT, SPOT_CHANGE_LENGTH, api_counter, API_TRIGGER_COUNT):
+                        IM_WIDTH, IM_HEIGHT, SPOT_CHANGE_LENGTH, api_counter, API_TRIGGER_COUNT, drawVisualization):
 
         from utils import visualization_utils as vis_util
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -133,10 +133,11 @@ class Device:
             feed_dict={image_tensor: frame_expanded})
 
         # Draw the results of the detection
-        vis_util.visualize_boxes_and_labels_on_image_array(current_frame, np.squeeze(boxes),
-                                                           np.squeeze(classes).astype(np.int32), np.squeeze(scores),
-                                                           category_index, use_normalized_coordinates=True,
-                                                           line_thickness=0, min_score_thresh=0.45)
+        if drawVisualization:
+            vis_util.visualize_boxes_and_labels_on_image_array(current_frame, np.squeeze(boxes),
+                                                               np.squeeze(classes).astype(np.int32), np.squeeze(scores),
+                                                               category_index, use_normalized_coordinates=True,
+                                                               line_thickness=0, min_score_thresh=0.45)
 
         # Draw parking spots labels
         for p in parking_spots:
@@ -235,7 +236,8 @@ class Device:
             if spot.IsOpen:
                 open_spots += 1
 
-        cv2.putText(current_frame, "Open Spots: " + str(open_spots) + "/" + str(total_spots), (8, 50), font, .7, (0, 0, 0), 2,
+        cv2.putText(current_frame, "Open Spots: " + str(open_spots) + "/" + str(total_spots), (8, 50), font, .7,
+                    (0, 0, 0), 2,
                     cv2.LINE_AA)
         cv2.putText(current_frame, "Open Spots: " + str(open_spots) + "/" + str(total_spots), (8, 50), font, .7,
                     (255, 255, 255), 1, cv2.LINE_AA)
