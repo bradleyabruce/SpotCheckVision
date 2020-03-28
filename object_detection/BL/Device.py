@@ -1,13 +1,12 @@
 from datetime import datetime
-
 import cv2
 import base64
 import numpy as np
 
 
-# Constructors
 class Device:
 
+    # region Constructors
     def __init__(self, device_id, device_name, local_ip, external_ip, mac_address, last_update_date, company_id,
                  take_new_image, device_status_id, parking_lot_id):
         self.DeviceID = device_id
@@ -26,7 +25,9 @@ class Device:
         device = Device(None, None, None, None, None, None, None, None, None, None, )
         return device
 
-    # Methods
+    # endregion
+
+    # region Methods
     def decoder(obj):
         device = Device(obj['deviceID'], obj['deviceName'], obj['localIpAddress'], obj['externalIpAddress'],
                         obj['macAddress'], obj['lastUpdateDate'], obj['companyID'], obj['takeNewImage'],
@@ -40,8 +41,7 @@ class Device:
                               self.ParkingLotID)
         return device_dl.fill()
 
-    @staticmethod
-    def getLocalIP():
+    def getLocalIP(self):
         try:
             import socket as sc
             host_name = sc.gethostname()
@@ -50,8 +50,7 @@ class Device:
         except Exception:
             return "Error"
 
-    @staticmethod
-    def getExternalIP():
+    def getExternalIP(self):
         try:
             import urllib.request as ur
             external_ip = ur.urlopen('https://ident.me').read().decode('utf8')
@@ -59,8 +58,7 @@ class Device:
         except Exception:
             return "Error"
 
-    @staticmethod
-    def getMacAddress():
+    def getMacAddress(self):
         try:
             import uuid
             mac_address = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff)
@@ -69,8 +67,7 @@ class Device:
         except Exception:
             return "Error"
 
-    @staticmethod
-    def isConnected():
+    def isConnected(self):
         try:
             import urllib.request as ur
             ur.urlopen('http://216.58.192.142', timeout=1)
@@ -118,9 +115,13 @@ class Device:
                               self.ParkingLotID)
         return device_dl.updateAllSpots(parkingLots)
 
+    # endregion
+
+    # region imageProcessing
+
     def imageProcessing(self, current_frame, parking_spots, sess, detection_boxes, detection_scores, detection_classes,
                         num_detections, image_tensor, category_index, required_index_list,
-                        IM_WIDTH, IM_HEIGHT, SPOT_CHANGE_LENGTH, api_counter, API_TRIGGER_COUNT, drawVisualization):
+                        IM_WIDTH, IM_HEIGHT, SPOT_UPDATE_AVAILABILITY_LENGTH, api_counter, SPOT_UPDATE_API_LENGTH, drawVisualization):
 
         from utils import visualization_utils as vis_util
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -160,7 +161,8 @@ class Device:
                 x = int(((boxes[0][detected_object_index][1] + boxes[0][detected_object_index][3]) / 2) * IM_WIDTH)
                 y = int(((boxes[0][detected_object_index][0] + boxes[0][detected_object_index][2]) / 2) * IM_HEIGHT)
                 object_coordinates.append((x, y))
-                # cv2.circle(current_frame, (x, y), 7, (0, 0, 255), -1)
+                if drawVisualization:  # draw circle of detected cars
+                    cv2.circle(current_frame, (x, y), 7, (0, 0, 255), -1)
             detected_object_index += 1
 
         # Run calculations to determine if a spot is available, occupied, or currently changing
@@ -178,7 +180,7 @@ class Device:
                     spot.OccupiedCounter += 1
                     spot.EmptyCounter = 0
                     # print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(spot.OccupiedCounter) + " " + "Empty Counter: " + str(spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
-                    if spot.OccupiedCounter is SPOT_CHANGE_LENGTH:
+                    if spot.OccupiedCounter is SPOT_UPDATE_AVAILABILITY_LENGTH:
                         spot.IsOpen = False
                         spot_changed = False
                     break
@@ -206,7 +208,7 @@ class Device:
                 spot.EmptyCounter += 1
                 spot.OccupiedCounter = 0
                 # print("Spot ID: " + str(spot.ParkingSpotID) + " " + "Occupied Counter: " + str(spot.OccupiedCounter) + " " + "Empty Counter: " + str(spot.EmptyCounter) + " " + "Is Spot Open?: " + str(spot.IsOpen))
-                if spot.EmptyCounter is SPOT_CHANGE_LENGTH:
+                if spot.EmptyCounter is SPOT_UPDATE_AVAILABILITY_LENGTH:
                     spot.IsOpen = True
                     spot_changed = False
 
@@ -243,7 +245,7 @@ class Device:
                     (255, 255, 255), 1, cv2.LINE_AA)
 
         # Send parking spot data to API
-        if api_counter % API_TRIGGER_COUNT == 0:
+        if api_counter % SPOT_UPDATE_API_LENGTH == 0:
             spotUpdateResult = self.updateAllSpots(parking_spots)
             now = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
             if spotUpdateResult:
@@ -254,23 +256,29 @@ class Device:
 
         return current_frame
 
-    def takeImage(self):
+    # endregion
+
+    def saveImage(self):
         camera = cv2.VideoCapture(0)
-        camera.set(3, 1280)
-        camera.set(4, 720)
-        camera.set(15, -8.0)
-        ret, frame = camera.read()
-        camera.release()
-        if ret:
-            t = np.arange(25, dtype=np.float64)
-            s = base64.b64encode(frame)
-            r = base64.decodebytes(s)
-            q = np.frombuffer(r, dtype=np.float64)
-
-            print(np.allclose(q, t))
-
-            # now we need to update the database so that we dont take another image
-            self.TakeNewImage = False
-            self.updateDevice()
-        else:
-            return None
+        try:
+            ret, frame = camera.read()
+            if ret:
+                # write image to directory
+                saveResult = cv2.imwrite('image.jpg', frame)
+                if saveResult:
+                    # retrieve image encoded string
+                    with open('image.jpg', "rb") as img_file:
+                        encodedImageString = base64.b64encode(img_file.read())
+                        encodedImageString = encodedImageString
+                    # save to database
+                    from DL.Device_dl import Device_dl
+                    device_dl = Device_dl(self.DeviceID, self.DeviceName, self.LocalIP, self.ExternalIP, self.MacAddress,
+                                        self.LastUpdateDate, self.CompanyID, self.TakeNewImage, self.DeviceStatusID,
+                                        self.ParkingLotID)
+                    return device_dl.saveImage(self.DeviceID, encodedImageString)
+                else:
+                    return False
+        except Exception as err:
+            return False
+        finally:
+            camera.release()

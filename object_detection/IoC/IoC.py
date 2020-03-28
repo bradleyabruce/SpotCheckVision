@@ -28,6 +28,8 @@ class IoC(object):
         try:
             if headerType == 'json':
                 headerData = {'Content-type': 'application/json'}
+            elif headerType == 'txt':
+                headerData = {'Content-type': 'text/plain'}
             if type == 'GET':
                 url = IoC.ApiAddress() + address
                 response = requests.get(url=url,headers=headerData)

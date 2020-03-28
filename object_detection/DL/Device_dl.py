@@ -83,3 +83,12 @@ class Device_dl(Device):
             return True
         else:
             return False
+
+    def saveImage(self, device_id, imageEncodedString):
+        bodyData = '(' + str(device_id) + ')' + imageEncodedString.decode('utf-8')
+        response = IoC.sendRequest('device/saveImage', bodyData, 'txt', 'POST')
+
+        if response.status_code == 200:
+            return True
+        else:
+            return False
